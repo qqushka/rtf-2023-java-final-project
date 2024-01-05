@@ -9,29 +9,44 @@ import java.util.List;
 import java.util.Map;
 
 public class Main {
-    public static void main(String[] args) throws IOException, CsvException, SQLException {
-        Parse parse = new Parse();
-        List<Earthquakes> earthquakes = parse.parseCsv("Earthquakes.csv");
-
+    public static void main(String[] args) {
+        String filename = "Earthquakes.csv";
+        if (args.length > 0) {
+            filename = args[0];
+        }
+        try {
+            List<Earthquakes> earthquakes = new Parse().parseCsv(filename);
+            processEarthquakes(earthquakes);
+        } catch (IOException | CsvException | SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    private static void processEarthquakes(List<Earthquakes> earthquakes) throws SQLException {
         Database db = new Database();
-        db.openConnection("is");
-        // db.saveEarthquakes(earthquakes); // Заполнить базу данных
-
-        Map<Integer, Integer> earthquakeData = db.analyzeEarthquakeData(); // Информация для построения графика
-        EarthquakeChart chart = new EarthquakeChart(earthquakeData); // График
-        chart.setVisible(true); // Отображаем график
-
-        // Cредняя магнитуда для штата
-        String State = "West Virginia";
-        float AverageMagnitudeForState = db.printAverageMagnitudeForState(State);
-        System.out.println(State + " -> " + AverageMagnitudeForState);
-
-        // Штат с самым глубоким землятресением по году
-        int Year = 2013;
-        String EarthquakeState = db.deepestEarthquakeStateIn2013(Year);
-        System.out.println(Year + " -> " + EarthquakeState);
-
-        db.close();
+        try {
+            db.openConnection("is");
+            fillDatabaseWithEarthquakes(db, earthquakes);
+            generateAndDisplayEarthquakeChart(db);
+            printAverageMagnitudeForState(db, "West Virginia");
+            printDeepestEarthquakeStateByYear(db, 2013);
+        } finally {
+            db.close();
+        }
+    }
+    private static void fillDatabaseWithEarthquakes(Database db, List<Earthquakes> earthquakes) throws SQLException {
+        db.saveEarthquakes(earthquakes);
+    }
+    private static void generateAndDisplayEarthquakeChart(Database db) throws SQLException {
+        Map<Integer, Integer> earthquakeData = db.analyzeEarthquakeData();
+        EarthquakeChart chart = new EarthquakeChart(earthquakeData);
+        chart.setVisible(true);
+    }
+    private static void printAverageMagnitudeForState(Database db, String state) throws SQLException {
+        float averageMagnitude = db.printAverageMagnitudeForState(state);
+        System.out.println(state + " -> " + averageMagnitude);
+    }
+    private static void printDeepestEarthquakeStateByYear(Database db, int year) throws SQLException {
+        String earthquakeState = db.findDeepestEarthquakeStateByYear(year);
+        System.out.println(year + " -> " + earthquakeState);
     }
 }
-
